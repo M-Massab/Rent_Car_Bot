@@ -1,122 +1,112 @@
-import os
-import asyncio
-from datetime import datetime
-from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse, FileResponse
+from __future__ import annotations
+
+import json
+import logging
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 
-# LlamaIndex & Gemini Imports
-from llama_index.llms.gemini import Gemini
-from llama_index.embeddings.gemini import GeminiEmbedding
-from llama_index.core import Settings
+from .config import Settings
+from .llm import LLM, make_llm
+from .rag.pipeline import RAGPipeline, build_pipeline
+from .ratelimit import SlidingWindowLimiter
+from .schemas import ChatRequest, ChatResponse
 
-# ---------------------------------------------------------
-# 1. AI Configuration (Gemini Free Tier setup via LlamaIndex)
-# ---------------------------------------------------------
-# Load this from a .env file in production
-os.environ["GOOGLE_API_KEY"] = "your_google_ai_studio_api_key_here"
+log = logging.getLogger("rentacar")
 
-# Configure LlamaIndex globally to use Gemini
-Settings.llm = Gemini(model="models/gemini-1.5-flash")
-Settings.embed_model = GeminiEmbedding(model_name="models/text-embedding-004")
-
-# Note: Your ChromaDB initialization and VectorStoreIndex creation 
-# would normally happen right here so it loads once on startup.
-# index = VectorStoreIndex.from_vector_store(...)
-
-# ---------------------------------------------------------
-# 2. FastAPI Application Setup
-# ---------------------------------------------------------
-app = FastAPI(title="Car Rental Booking & AI API")
-
-# Enable CORS (crucial for local development when React is on a different port)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], 
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+CSP = (
+    "default-src 'self'; img-src 'self' data:; style-src 'self'; font-src 'self'; "
+    "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self' https://wa.me"
 )
 
-# ---------------------------------------------------------
-# 3. Dynamic Business Logic (Seasonal Pricing)
-# ---------------------------------------------------------
-def get_dynamic_system_prompt() -> str:
-    """Injects current date, location, and seasonal pricing rules before querying the AI."""
-    now = datetime.now()
-    current_month = now.month
-    
-    # Example: Apply winter markup for Lahore from November to February
-    markup = 0
-    if current_month in [11, 12, 1, 2]:
-        markup = 2000
-    
-    formatted_date = now.strftime("%B %d, %Y")
-    
-    prompt = (
-        f"You are the customer service assistant for a car rental company in Lahore.\n"
-        f"Today's date is {formatted_date}.\n"
-        f"CRITICAL RULE: You must add a seasonal markup of {markup} PKR to ALL base daily "
-        f"rates retrieved from the database before showing the price to the customer. "
-        f"Do not mention the base rate or the markup to the customer, only provide the final total."
-    )
-    return prompt
 
-# ---------------------------------------------------------
-# 4. Chat Endpoint (Deep Chat Format)
-# ---------------------------------------------------------
-# Deep Chat sends messages in this structure by default
-class Message(BaseModel):
-    text: str
-    role: str
+def create_app(settings: Settings | None = None, llm: LLM | None = None) -> FastAPI:
+    settings = settings or Settings()
+    limiter = SlidingWindowLimiter(settings.rate_limit_per_min)
+    state: dict = {}
 
-class ChatRequest(BaseModel):
-    messages: list[Message]
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        state["pipeline"] = build_pipeline(settings, llm or make_llm(settings))
+        state["business"] = state["pipeline"].business
+        state["fleet"] = json.loads((settings.data_dir / "fleet.json").read_text(encoding="utf-8"))
+        log.info("RAG pipeline ready, llm=%s, chunks=%d", state["pipeline"].llm.mode, len(state["pipeline"].retriever.chunks))
+        yield
 
-@app.post("/api/chat")
-async def chat_endpoint(request: ChatRequest):
-    # Extract the user's latest message
-    user_message = request.messages[-1].text
-    
-    # Generate the dynamic system prompt
-    system_instruction = get_dynamic_system_prompt()
-    
-    # Combine system prompt with user query (In a full RAG app, you'd pass this to the query_engine)
-    full_query = f"{system_instruction}\n\nUser Question: {user_message}"
+    app = FastAPI(title="Lahore Drive Rentals", lifespan=lifespan, docs_url=None, redoc_url=None)
 
-    # Asynchronous generator for Server-Sent Events (SSE)
-    async def event_stream():
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next):
+        resp = await call_next(request)
+        resp.headers.setdefault("Content-Security-Policy", CSP)
+        resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+        resp.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        return resp
+
+    def client_key(request: Request) -> str:
+        if settings.trust_proxy and (fwd := request.headers.get("x-forwarded-for")):
+            return fwd.split(",")[0].strip()
+        return request.client.host if request.client else "unknown"
+
+    def write_log(req_text: str, r) -> None:
         try:
-            # Placeholder: In production, use your LlamaIndex Query Engine:
-            # response = index.as_query_engine(streaming=True).query(full_query)
-            # for token in response.response_gen:
-            
-            # Using raw LLM for boilerplate demonstration
-            response = Settings.llm.stream_complete(full_query)
-            
-            for chunk in response:
-                # Deep Chat expects standard plain-text SSE tokens, separated by newlines
-                yield f"data: {chunk.text}\n\n"
-                await asyncio.sleep(0.01) # Small yield to event loop
-                
-        except Exception as e:
-            yield f"data: Error processing request: {str(e)}\n\n"
+            settings.log_dir.mkdir(parents=True, exist_ok=True)
+            row = {
+                "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "intent": r.intent, "grounded": r.grounded, "handoff": r.handoff,
+                "retrieved": r.retrieved, "cited": [s["id"] for s in r.sources], "ms": r.latency_ms,
+            }
+            if settings.log_chat_text:  # off by default: customers type phone numbers and names
+                row["question"], row["answer"] = req_text, r.answer
+            with (settings.log_dir / "chats.jsonl").open("a", encoding="utf-8") as f:
+                f.write(json.dumps(row, ensure_ascii=False) + "\n")
+        except OSError:
+            log.exception("could not write chat log")
 
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
+    @app.get("/api/health")
+    def health():
+        p: RAGPipeline = state["pipeline"]
+        return {"status": "ok", "llm": p.llm.mode, "chunks": len(p.retriever.chunks)}
 
-# ---------------------------------------------------------
-# 5. Serve React Frontend (Static SPA)
-# ---------------------------------------------------------
-# Ensure you build your React app (e.g., `npm run build`) and place the 
-# output in a folder named 'frontend_build' in the same directory as this file.
+    @app.get("/api/config")
+    def config():
+        return {**state["business"], "llm_mode": state["pipeline"].llm.mode}
 
-# Mount the static assets (CSS, JS, images)
-# app.mount("/assets", StaticFiles(directory="frontend_build/assets"), name="assets")
+    @app.get("/api/fleet")
+    def fleet():
+        return state["fleet"]
 
-# Catch-all route to serve the React index.html for all other paths.
-# This ensures React Router handles page navigation without hitting a 404 on the backend.
-# @app.get("/{catchall:path}")
-# async def serve_react_app(request: Request):
-#     return FileResponse("frontend_build/index.html")
+    @app.get("/api/faq")
+    def faq():
+        return [
+            {"id": c.id, "question": c.section, "answer": c.body}
+            for c in state["pipeline"].retriever.chunks
+            if c.doc == "faq"
+        ]
+
+    @app.post("/api/chat", response_model=ChatResponse)
+    def chat(body: ChatRequest, request: Request):
+        if not limiter.allow(client_key(request)):
+            raise HTTPException(status_code=429, detail="Too many messages. Please wait a minute and try again.")
+        history = [t.model_dump() for t in body.history]
+        result = state["pipeline"].answer(body.message, history)
+        write_log(body.message, result)
+        return ChatResponse(
+            answer=result.answer, sources=result.sources, handoff=result.handoff,
+            grounded=result.grounded, intent=result.intent,
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled(request: Request, exc: Exception):
+        log.exception("unhandled error")
+        return JSONResponse({"detail": "Something went wrong. Please try again."}, status_code=500)
+
+    if settings.site_dir.exists():
+        app.mount("/", StaticFiles(directory=settings.site_dir, html=True), name="site")
+    return app
+
+
+app = create_app()
