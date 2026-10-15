@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lahore Drive Rentals: car rental with driver or self-drive</title>
+<meta name="description" content="Rent a car in Lahore with a driver or self-drive. Airport pickup, weddings, outstation trips and monthly contracts. Demo project with sample rates.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+<link rel="preload" href="fonts/schibsted-grotesk-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+</head>
+<body>
+<svg class="sprite" width="0" height="0" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-hatchback" viewBox="0 0 120 48"><g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 36v-8q0-4 4-5l16-4 12-9q2-2 6-2h28q5 0 8 3l10 10 14 3q4 1 4 5v7"/><path d="M6 36h17M37 36h46M97 36h17"/><circle cx="30" cy="36" r="7"/><circle cx="90" cy="36" r="7"/><path d="M42 19l9-8h14v8zM71 19v-8l8 8z"/></g></symbol>
+    <symbol id="i-sedan" viewBox="0 0 120 48"><g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 36v-6q0-5 5-6l15-3 12-10q3-2 7-2h24q5 0 8 3l12 10 17 4q4 1 4 5v5"/><path d="M6 36h17M37 36h46M97 36h17"/><circle cx="30" cy="36" r="7"/><circle cx="90" cy="36" r="7"/><path d="M42 21l9-9h12v9zM69 21v-9h5l10 9z"/></g></symbol>
+    <symbol id="i-suv" viewBox="0 0 120 48"><g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 37v-9q0-4 4-5l12-3 6-8q2-3 6-3h50q4 0 6 3l8 9h12q6 1 6 6v10"/><path d="M6 37h17M37 37h46M97 37h17"/><circle cx="30" cy="37" r="7"/><circle cx="90" cy="37" r="7"/><path d="M34 20l5-7h20v7zM65 20v-7h18l6 7z"/></g></symbol>
+    <symbol id="i-van" viewBox="0 0 120 48"><g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 37V13q0-4 4-4h66q5 0 8 4l14 12q4 3 4 8v4"/><path d="M6 37h17M37 37h46M97 37h17"/><circle cx="30" cy="37" r="7"/><circle cx="90" cy="37" r="7"/><path d="M14 17h14v10H14zM34 17h14v10H34zM54 17h14v10H54zM74 17h8l10 10H74z"/></g></symbol>
+    <symbol id="i-bus" viewBox="0 0 120 48"><g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 37V12q0-3 3-3h92q6 0 9 5l4 8q2 4 2 8v7"/><path d="M4 37h17M35 37h50M99 37h17"/><circle cx="28" cy="37" r="7"/><circle cx="92" cy="37" r="7"/><path d="M11 15h13v11H11zM29 15h13v11H29zM47 15h13v11H47zM65 15h13v11H65zM83 15h12l7 11H83z"/></g></symbol>
+  </defs>
+</svg>
+
+<header class="bar">
+  <div class="wrap bar-in">
+    <a class="brand" href="#top" aria-label="Lahore Drive Rentals home"><span class="brand-mark" aria-hidden="true"></span><span data-bind="name">Lahore Drive Rentals</span></a>
+    <nav aria-label="Main">
+      <a href="#fleet">Fleet and rates</a>
+      <a href="#services">Services</a>
+      <a href="#how">Booking</a>
+      <a href="#faq">Questions</a>
+    </nav>
+    <a class="btn btn-small" data-wa="Hello, I would like to ask about renting a car." href="#contact" target="_blank" rel="noopener">WhatsApp</a>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero" aria-labelledby="h1">
+    <div class="wrap hero-in">
+      <div class="hero-en">
+        <h1 id="h1">Rent a car in Lahore, with a driver or on your own.</h1>
+        <p class="lead">Hatchbacks to Prados, plus a 13-seat Hiace and a 26-seat Coaster. Airport pickups, weddings, trips to Murree and Islamabad, and monthly contracts for companies.</p>
+        <div class="cta">
+          <a class="btn" data-wa="Hello, I would like a quote for renting a car." href="#contact" target="_blank" rel="noopener">Get a quote on WhatsApp</a>
+          <a class="btn btn-ghost" href="#fleet">See cars and rates</a>
+        </div>
+      </div>
+      <div class="hero-ur" lang="ur" dir="rtl">
+        <p class="display-ur">گاڑی کرائے پر،<br>لاہور سے پورے پاکستان تک</p>
+        <div class="plate" id="plate" hidden>
+          <span class="plate-cap" id="plate-cap"></span>
+          <span class="plate-price" id="plate-price"></span>
+          <span class="plate-unit">per day, self-drive</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="fleet" class="sec" aria-labelledby="fleet-h">
+    <div class="wrap">
+      <h2 id="fleet-h">Fleet and daily rates</h2>
+      <p class="sec-lead">Prices are per day in Pakistani rupees. Choose how you want to travel and the rates below update.</p>
+      <div class="controls">
+        <div class="seg" role="group" aria-label="Rental type">
+          <button type="button" class="seg-btn" data-mode="driver" aria-pressed="true">With driver</button>
+          <button type="button" class="seg-btn" data-mode="self" aria-pressed="false">Self-drive</button>
+        </div>
+        <div class="chips" role="group" aria-label="Vehicle type" id="chips"></div>
+      </div>
+      <p class="note" id="mode-note" aria-live="polite"></p>
+      <div class="fleet" id="fleet-grid" aria-live="polite"><p class="note">Loading the fleet…</p></div>
+    </div>
+  </section>
+
+  <section id="charges" class="sec sec-tint" aria-labelledby="charges-h">
+    <div class="wrap two">
+      <div>
+        <h2 id="charges-h">Other charges, in plain numbers</h2>
+        <p class="sec-lead">Extra hours and kilometres are listed on each car above. Everything else:</p>
+      </div>
+      <dl class="rows" id="charges-list"></dl>
+    </div>
+  </section>
+
+  <section id="services" class="sec" aria-labelledby="services-h">
+    <div class="wrap">
+      <h2 id="services-h">What we do</h2>
+      <div class="services">
+        <article><h3>Car with driver in Lahore</h3><p>A uniformed driver and fuel are included in a 10 hour, 100 km package. For meetings, shopping, family visits and city tours.</p></article>
+        <article><h3>Self-drive</h3><p>Alto, Cultus, Yaris, Corolla, Civic, BR-V and Sportage. You need a CNIC, a licence held for two years, and a refundable deposit.</p></article>
+        <article><h3>Airport pickup and drop-off</h3><p>Flat one-way rates to and from Allama Iqbal International Airport. The driver tracks your flight and waits an hour after landing for free.</p></article>
+        <article><h3>Outstation and tours</h3><p>Islamabad, Murree, Multan, Faisalabad, Sialkot and the northern areas, priced per day with 250 km and fuel included.</p></article>
+        <article><h3>Weddings and events</h3><p>Mercedes for the couple, Fortuner or Prado for family, Hiace and Coaster for guests. Flower decoration available.</p></article>
+        <article><h3>Companies and monthly rentals</h3><p>A dedicated car and driver on a monthly contract with invoicing. Weekly rentals get 10 percent off and monthly rentals 20 percent.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" class="sec sec-tint" aria-labelledby="how-h">
+    <div class="wrap">
+      <h2 id="how-h">How booking works</h2>
+      <ol class="steps">
+        <li><h3>Message us</h3><p>Send your dates, pickup place, route and number of passengers on WhatsApp or by phone.</p></li>
+        <li><h3>Get a quote</h3><p>We confirm the car and the price. The chatbot on this page gives estimates only and cannot confirm a booking.</p></li>
+        <li><h3>Pay the advance</h3><p>30 percent by bank transfer, JazzCash or Easypaisa confirms the booking.</p></li>
+        <li><h3>Take the car</h3><p>Your driver arrives, or you collect the car and pay the balance. Cancel free up to 24 hours before.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="faq" class="sec" aria-labelledby="faq-h">
+    <div class="wrap narrow">
+      <h2 id="faq-h">Common questions</h2>
+      <div id="faq-list"><p class="note">Loading…</p></div>
+    </div>
+  </section>
+</main>
+
+<footer id="contact" class="foot">
+  <div class="wrap foot-in">
+    <div>
+      <p class="foot-name" data-bind="name">Lahore Drive Rentals</p>
+      <address><span data-bind="address"></span><br><span data-bind="hours"></span></address>
+    </div>
+    <div>
+      <p><a data-bind-tel href="#">Phone</a></p>
+      <p><a data-bind-mail href="#">Email</a></p>
+      <p><a data-wa="Hello, I would like to ask about renting a car." href="#" target="_blank" rel="noopener">WhatsApp</a></p>
+    </div>
+    <p class="demo" id="demo-notice"></p>
+  </div>
+</footer>
+
+<script src="app.js" defer></script>
+<script src="chat.js" defer></script>
+</body>
+</html>
